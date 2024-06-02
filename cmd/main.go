@@ -44,6 +44,11 @@ func commands() map[string]Command {
 			description: "Inspect a pokemon you have caught -- inspect <pokemon>",
 			callback:    inspect,
 		},
+		"pokedex": {
+			name:        "pokedex",
+			description: "view all the pokemon you have caught",
+			callback:    pokedexList,
+		},
 		"help": {
 			name:        "help",
 			description: "Displays a help message",
@@ -131,24 +136,14 @@ func inspect(c *pokeapi.Config, pokemon string) error {
 	return nil
 }
 
-func printDetails(details pokeapi.Pokemon) {
-	name := details.Name
-	height := details.Height
-	weight := details.Weight
-	stats := details.Stats
-	types := details.Types
-
-	fmt.Printf("Name: %s\n", name)
-	fmt.Printf("Height: %d\n", height)
-	fmt.Printf("Weight: %d\n", weight)
-	fmt.Println("Stats:")
-	for _, stat := range stats {
-		fmt.Printf("\t-%s: %d\n", stat.Stat.Name, stat.BaseStat)
+func pokedexList(c *pokeapi.Config, arg string) error {
+	_ = c
+	_ = arg
+	fmt.Println("Your Pokedex:")
+	for pokemon := range pokedex {
+		fmt.Printf("  - %s\n", pokemon)
 	}
-	fmt.Println("Types:")
-	for _, t := range types {
-		fmt.Printf("\t-%s\n", t.Type.Name)
-	}
+	return nil
 }
 
 func mapf(c *pokeapi.Config, arg string) error {
@@ -177,6 +172,26 @@ func printPokemon(pokemon []pokeapi.Pokemon) {
 	fmt.Println("Found Pokemon:")
 	for _, p := range pokemon {
 		fmt.Println(" - ", p.Name)
+	}
+}
+
+func printDetails(details pokeapi.Pokemon) {
+	name := details.Name
+	height := details.Height
+	weight := details.Weight
+	stats := details.Stats
+	types := details.Types
+
+	fmt.Printf("Name: %s\n", name)
+	fmt.Printf("Height: %d\n", height)
+	fmt.Printf("Weight: %d\n", weight)
+	fmt.Println("Stats:")
+	for _, stat := range stats {
+		fmt.Printf("\t-%s: %d\n", stat.Stat.Name, stat.BaseStat)
+	}
+	fmt.Println("Types:")
+	for _, t := range types {
+		fmt.Printf("\t-%s\n", t.Type.Name)
 	}
 }
 
