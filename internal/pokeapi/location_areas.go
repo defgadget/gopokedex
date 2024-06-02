@@ -3,24 +3,12 @@ package pokeapi
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"time"
+
+	"github.com/defgadget/gopokedex/internal/pokecache"
 )
-
-const (
-	api     string = "https://pokeapi.co/api"
-	version string = "v2"
-)
-
-type Config struct {
-	Count    int           `json:"count"`
-	Next     string        `json:"next"`
-	Previous string        `json:"previous"`
-	Results  LocationAreas `json:"results"`
-}
-
-func NewDefaultConfig() *Config {
-	return &Config{Next: fmt.Sprintf("%s/%s/location-area", api, version)}
-}
 
 type LocationAreas []LocationArea
 
@@ -61,10 +49,7 @@ type Names struct {
 	Name     string   `json:"name"`
 	Language Language `json:"language"`
 }
-type Pokemon struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
+
 type Method struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
@@ -86,17 +71,59 @@ type PokemonEncounters struct {
 	VersionDetails []EncounterVersionDetails `json:"version_details"`
 }
 
+var cache pokecache.Cache = *pokecache.NewCache(time.Second * 10)
+
 func GetLocationAreas(url string, c *Config) (LocationAreas, error) {
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
+	data, ok := cache.Get(url)
+	if !ok {
+		resp, err := http.Get(url)
+		if err != nil {
+			return nil, err
+		}
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		cache.Add(url, data)
 	}
 
-	decoder := json.NewDecoder(resp.Body)
-	err = decoder.Decode(c)
+	err := json.Unmarshal(data, c)
 	if err != nil {
 		return nil, err
 	}
 
 	return c.Results, nil
+}
+
+func GetAreaPokemon(location string) ([]Pokemon, error) {
+	url := fmt.Sprintf("%s/%s/location-area/%s", api, version, location)
+	data, ok := cache.Get(url)
+	if !ok {
+		resp, err := http.Get(url)
+		if err != nil {
+			fmt.Println("Get failed on ", url, err)
+			return nil, err
+		}
+		data, err = io.ReadAll(resp.Body)
+		if err != nil {
+			fmt.Println("Reading body failed: ", err)
+			return nil, err
+		}
+		cache.Add(url, data)
+	}
+
+	area := &LocationArea{}
+	err := json.Unmarshal(data, area)
+	if err != nil {
+		fmt.Println("Json failed: ", err)
+		return nil, err
+	}
+
+	pokemon := make([]Pokemon, 1)
+	for _, encounter := range area.PokemonEncounters {
+		pokemon = append(pokemon, encounter.Pokemon)
+	}
+
+	return pokemon, nil
+
 }
